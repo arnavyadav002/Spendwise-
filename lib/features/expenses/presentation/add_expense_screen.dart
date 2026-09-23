@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
 
 import '../state/expense_provider.dart';
 import '../domain/models/expense.dart';
@@ -21,6 +22,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   final _descController = TextEditingController();
   final _amountController = TextEditingController();
   ExpenseCategory _selectedCategory = _categories.first;
+  DateTime _selectedDate = DateTime.now();
   bool _saving = false;
 
   static const _categories = [
@@ -38,23 +40,39 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
     super.dispose();
   }
 
+  Future<void> _pickDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now().add(const Duration(days: 3650)),
+    );
+
+    if (picked != null) {
+      setState(() => _selectedDate = picked);
+    }
+  }
+
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _saving = true);
 
-    final amountInPaise = (double.parse(_amountController.text) * 100).round();
-    final expense = Expense(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      amount: Money(amountInPaise),
-      description: _descController.text.trim(),
-      date: DateTime.now(),
-      category: _selectedCategory,
-    );
+    try {
+      final amountInPaise = (double.parse(_amountController.text) * 100)
+          .round();
+      final expense = Expense(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        amount: Money(amountInPaise),
+        description: _descController.text.trim(),
+        date: _selectedDate,
+        category: _selectedCategory,
+      );
 
-    await ref.read(expensesProvider.notifier).addExpense(expense);
+      await ref.read(expensesProvider.notifier).addExpense(expense);
 
-    if (mounted) {
+      if (!mounted) return;
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text('Expense added!'),
@@ -65,7 +83,22 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
           backgroundColor: const Color(0xFF00897B),
         ),
       );
-      context.pop();
+      if (context.mounted) {
+        context.pop();
+      }
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(error.toString().replaceAll('Exception: ', '')),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _saving = false);
+      }
     }
   }
 
@@ -156,6 +189,58 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                     prefixIcon: Icon(
                       Icons.description_outlined,
                       color: Colors.grey.shade400,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Date selector
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: cardColor,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: InkWell(
+                  onTap: _pickDate,
+                  borderRadius: BorderRadius.circular(16),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.calendar_today_outlined,
+                          color: Colors.grey.shade400,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Date',
+                                style: GoogleFonts.inter(
+                                  fontSize: 13,
+                                  color: Colors.grey.shade500,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                DateFormat('MMM d, yyyy').format(_selectedDate),
+                                style: GoogleFonts.inter(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Icon(
+                          Icons.chevron_right_rounded,
+                          color: Colors.grey.shade500,
+                        ),
+                      ],
                     ),
                   ),
                 ),
