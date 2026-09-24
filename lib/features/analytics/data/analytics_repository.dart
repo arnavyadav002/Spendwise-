@@ -1,18 +1,28 @@
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../domain/models/spending_summary.dart';
-import '../../../core/utils/money.dart';
+import '../../../core/network/api_client.dart';
+import '../../../core/network/error_mapper.dart';
 
 final analyticsRepositoryProvider = Provider<AnalyticsRepository>((ref) {
-  return AnalyticsRepository();
+  return AnalyticsRepository(ref.read(apiClientProvider));
 });
 
 class AnalyticsRepository {
+  final Dio _dio;
+
+  AnalyticsRepository(this._dio);
+
   Future<SpendingSummary> getMonthlySummary(int month, int year) async {
-    await Future.delayed(const Duration(milliseconds: 500));
-    return const SpendingSummary(
-      totalSpent: Money(1500000),
-      categoryBreakdown: {'Food': Money(500000), 'Transport': Money(200000)},
-    );
+    try {
+      final response = await _dio.get(
+        '/analytics',
+        queryParameters: {'month': month, 'year': year},
+      );
+      return SpendingSummary.fromJson(response.data as Map<String, dynamic>);
+    } catch (e) {
+      throw ErrorMapper.map(e);
+    }
   }
 }

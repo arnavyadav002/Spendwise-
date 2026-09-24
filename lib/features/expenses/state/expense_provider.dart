@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../analytics/state/analytics_provider.dart';
+import '../../budgets/state/budget_provider.dart';
 import '../../dashboard/state/dashboard_provider.dart';
 import '../data/expense_repository.dart';
 import '../domain/models/expense.dart';
@@ -30,14 +31,16 @@ class ExpensesNotifier extends AsyncNotifier<List<Expense>> {
 
     try {
       final repository = ref.read(expenseRepositoryProvider);
-      final savedExpense = await repository.addExpense(expense);
-      final updatedList = <Expense>[savedExpense, ...previous];
-      state = AsyncValue.data(updatedList);
+      await repository.addExpense(expense);
+      final fullList = await repository.getExpenses();
+      state = AsyncValue.data(fullList);
       ref.invalidate(dashboardProvider);
       ref.invalidate(analyticsProvider);
+      ref.invalidate(budgetsProvider);
     } catch (e, stack) {
       state = AsyncValue.data(previous);
       state = AsyncValue.error(e, stack);
+      rethrow;
     }
   }
 
@@ -51,11 +54,35 @@ class ExpensesNotifier extends AsyncNotifier<List<Expense>> {
     try {
       final repository = ref.read(expenseRepositoryProvider);
       await repository.updateExpense(expense);
+      final fullList = await repository.getExpenses();
+      state = AsyncValue.data(fullList);
       ref.invalidate(dashboardProvider);
       ref.invalidate(analyticsProvider);
+      ref.invalidate(budgetsProvider);
     } catch (e, stack) {
       state = AsyncValue.data(previous);
       state = AsyncValue.error(e, stack);
+      rethrow;
+    }
+  }
+
+  Future<void> deleteExpense(String id) async {
+    final previous = state.value ?? const <Expense>[];
+    final updatedList = previous.where((e) => e.id != id).toList();
+    state = AsyncValue.data(updatedList);
+
+    try {
+      final repository = ref.read(expenseRepositoryProvider);
+      await repository.deleteExpense(id);
+      final fullList = await repository.getExpenses();
+      state = AsyncValue.data(fullList);
+      ref.invalidate(dashboardProvider);
+      ref.invalidate(analyticsProvider);
+      ref.invalidate(budgetsProvider);
+    } catch (e, stack) {
+      state = AsyncValue.data(previous);
+      state = AsyncValue.error(e, stack);
+      rethrow;
     }
   }
 }

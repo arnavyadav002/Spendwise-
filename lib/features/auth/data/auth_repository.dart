@@ -1,24 +1,37 @@
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../domain/models/user_model.dart';
 import '../../../core/security/secure_session_store.dart';
+import '../../../core/network/api_client.dart';
+import '../../../core/network/error_mapper.dart';
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
-  return AuthRepository(ref.read(secureSessionStoreProvider));
+  return AuthRepository(
+    ref.read(apiClientProvider),
+    ref.read(secureSessionStoreProvider),
+  );
 });
 
 class AuthRepository {
+  final Dio _dio;
   final SecureSessionStore _sessionStore;
 
-  AuthRepository(this._sessionStore);
+  AuthRepository(this._dio, this._sessionStore);
 
   Future<UserModel> login(String username, String password) async {
-    await Future.delayed(const Duration(milliseconds: 800));
-    if (password != '1234') {
-      throw Exception('Invalid password. Please use 1234.');
+    try {
+      final response = await _dio.post(
+        '/auth/login',
+        data: {'username': username, 'password': password},
+      );
+      final data = response.data as Map<String, dynamic>;
+      final token = data['token'] as String;
+      await _sessionStore.saveToken(token);
+      return UserModel.fromJson(data['user'] as Map<String, dynamic>);
+    } catch (e) {
+      throw ErrorMapper.map(e);
     }
-    await _sessionStore.saveToken('fake_token_123');
-    return UserModel(id: '1', email: '$username@example.com', name: username);
   }
 
   Future<void> logout() async {

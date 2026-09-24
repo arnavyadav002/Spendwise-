@@ -16,8 +16,6 @@ import '../features/budgets/presentation/budgets_screen.dart';
 import '../features/budgets/presentation/create_budget_screen.dart';
 import '../features/categories/presentation/categories_screen.dart';
 
-// Listenable that bridges Riverpod auth state → GoRouter refreshes,
-// so we don't recreate the entire GoRouter on every auth change.
 class _AuthNotifierListenable extends ChangeNotifier {
   _AuthNotifierListenable(this._ref) {
     _ref.listen(authProvider, (previous, next) => notifyListeners());
@@ -31,6 +29,31 @@ final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: AppRoutes.dashboard,
     refreshListenable: authListenable,
+    errorBuilder: (context, state) => Scaffold(
+      appBar: AppBar(title: const Text('Page Not Found')),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              Icons.error_outline_rounded,
+              size: 64,
+              color: Colors.grey,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Route "${state.uri}" not found',
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () => context.go(AppRoutes.dashboard),
+              child: const Text('Return to Dashboard'),
+            ),
+          ],
+        ),
+      ),
+    ),
     redirect: (context, state) {
       final isAuth = ref.read(authProvider).isAuthenticated;
       final isLoginRoute = state.uri.toString() == AppRoutes.login;

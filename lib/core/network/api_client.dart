@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'api_config.dart';
+import 'mock_backend.dart';
 import '../security/secure_session_store.dart';
 import '../../features/auth/state/auth_provider.dart';
 
@@ -14,6 +15,10 @@ final apiClientProvider = Provider<Dio>((ref) {
     ),
   );
 
+  // 1. Mock Backend Interceptor (handles all API endpoints with in-memory persistence)
+  dio.interceptors.add(MockBackendInterceptor());
+
+  // 2. Auth & Error interceptor
   dio.interceptors.add(
     InterceptorsWrapper(
       onRequest: (options, handler) async {
