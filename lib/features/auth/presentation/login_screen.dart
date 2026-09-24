@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../state/auth_provider.dart';
+import '../../../app/app.dart';
 import '../../../app/routes.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -15,8 +16,8 @@ class LoginScreen extends ConsumerStatefulWidget {
 
 class _LoginScreenState extends ConsumerState<LoginScreen>
     with SingleTickerProviderStateMixin {
-  final _usernameController = TextEditingController();
-  final _passwordController = TextEditingController();
+  final _usernameController = TextEditingController(text: 'arnav');
+  final _passwordController = TextEditingController(text: '1234');
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
 
@@ -25,7 +26,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     super.initState();
     _fadeController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 800),
+      duration: const Duration(milliseconds: 600),
     );
     _fadeAnimation = CurvedAnimation(
       parent: _fadeController,
@@ -45,6 +46,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     ref.listen<AuthState>(authProvider, (previous, next) {
       if (next.isAuthenticated) {
@@ -65,7 +67,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     });
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        actions: [
+          IconButton(
+            onPressed: () => ref.read(themeModeProvider.notifier).toggle(),
+            icon: Icon(
+              isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+              color: Colors.grey.shade500,
+            ),
+            tooltip: 'Toggle Theme',
+          ),
+          const SizedBox(width: 8),
+        ],
+      ),
       body: SafeArea(
         child: FadeTransition(
           opacity: _fadeAnimation,
@@ -78,8 +94,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                 children: [
                   // Logo & branding
                   Container(
-                    width: 80,
-                    height: 80,
+                    width: 76,
+                    height: 76,
                     decoration: BoxDecoration(
                       color: const Color(0xFF00897B).withAlpha(25),
                       shape: BoxShape.circle,
@@ -90,26 +106,25 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                       color: Color(0xFF00897B),
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 20),
                   Text(
                     'SpendWise',
                     textAlign: TextAlign.center,
                     style: GoogleFonts.inter(
                       fontSize: 32,
-                      fontWeight: FontWeight.w700,
-                      color: const Color(0xFF1A1A2E),
+                      fontWeight: FontWeight.w800,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 6),
                   Text(
-                    'Take control of your finances',
+                    'Smart personal finance & budgets',
                     textAlign: TextAlign.center,
                     style: GoogleFonts.inter(
-                      fontSize: 15,
+                      fontSize: 14,
                       color: Colors.grey.shade500,
                     ),
                   ),
-                  const SizedBox(height: 48),
+                  const SizedBox(height: 40),
 
                   // Username field
                   TextField(
@@ -144,7 +159,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                       ),
                     ),
                   ),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 28),
 
                   // Login button
                   AnimatedSwitcher(
@@ -167,7 +182,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                               minimumSize: const Size.fromHeight(56),
                             ),
                             onPressed: _handleLogin,
-                            child: const Text('Sign In'),
+                            child: Text(
+                              'Sign In',
+                              style: GoogleFonts.inter(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                           ),
                   ),
                 ],

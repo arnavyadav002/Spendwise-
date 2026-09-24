@@ -1,3 +1,9 @@
+import 'package:spendwise/core/network/mock_backend.dart';
+
 class FakeApi {
-  // Helpers for testing
+  static MockBackendDatabase get db => MockBackendDatabase.instance;
+
+  static void reset() {
+    MockBackendDatabase.instance.reset();
+  }
 }

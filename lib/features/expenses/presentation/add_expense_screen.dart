@@ -9,6 +9,7 @@ import '../domain/models/expense.dart';
 import '../domain/models/expense_category.dart';
 import '../../../core/utils/money.dart';
 import '../../../core/utils/validators.dart';
+import '../../../app/routes.dart';
 
 class AddExpenseScreen extends ConsumerStatefulWidget {
   const AddExpenseScreen({super.key});
@@ -33,6 +34,16 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
     ExpenseCategory(id: 'c5', name: 'Bills & Utilities', icon: '💡'),
   ];
 
+  static const _quickAmounts = [100, 250, 500, 1000, 2000];
+  static const _quickDescriptions = [
+    'Coffee',
+    'Lunch',
+    'Groceries',
+    'Uber',
+    'Shopping',
+    'Dinner',
+  ];
+
   @override
   void dispose() {
     _descController.dispose();
@@ -40,12 +51,22 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
     super.dispose();
   }
 
+  void _addQuickAmount(int value) {
+    final current =
+        double.tryParse(_amountController.text.replaceAll(',', '').trim()) ??
+        0.0;
+    final updated = current + value;
+    _amountController.text = updated % 1 == 0
+        ? updated.toInt().toString()
+        : updated.toStringAsFixed(2);
+  }
+
   Future<void> _pickDate() async {
     final picked = await showDatePicker(
       context: context,
       initialDate: _selectedDate,
       firstDate: DateTime(2020),
-      lastDate: DateTime.now().add(const Duration(days: 3650)),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
     );
 
     if (picked != null) {
@@ -56,13 +77,28 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
 
+    final rawAmount = _amountController.text.replaceAll(',', '').trim();
+    final parsed = double.tryParse(rawAmount);
+    if (parsed == null || parsed <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Please enter a valid amount greater than 0'),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+
     setState(() => _saving = true);
 
     try {
-      final amountInPaise = (double.parse(_amountController.text) * 100)
-          .round();
+      final amountInPaise = (parsed * 100).round();
       final expense = Expense(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        id: 'exp_${DateTime.now().millisecondsSinceEpoch}',
         amount: Money(amountInPaise),
         description: _descController.text.trim(),
         date: _selectedDate,
@@ -75,7 +111,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Expense added!'),
+          content: Text('Expense added: ${expense.description}'),
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
@@ -83,8 +119,11 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
           backgroundColor: const Color(0xFF00897B),
         ),
       );
-      if (context.mounted) {
+
+      if (context.canPop()) {
         context.pop();
+      } else {
+        context.go(AppRoutes.dashboard);
       }
     } catch (error) {
       if (!mounted) return;
@@ -116,6 +155,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
+        physics: const BouncingScrollPhysics(),
         child: Form(
           key: _formKey,
           child: Column(
@@ -126,7 +166,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
                   color: cardColor,
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(22),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -164,6 +204,27 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                         contentPadding: EdgeInsets.zero,
                       ),
                     ),
+                    const SizedBox(height: 14),
+                    // Quick amount chips
+                    Wrap(
+                      spacing: 8,
+                      children: _quickAmounts.map((amt) {
+                        return ActionChip(
+                          visualDensity: VisualDensity.compact,
+                          backgroundColor: isDark
+                              ? Colors.white10
+                              : Colors.grey.shade100,
+                          label: Text(
+                            '+₹$amt',
+                            style: GoogleFonts.inter(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          onPressed: () => _addQuickAmount(amt),
+                        );
+                      }).toList(),
+                    ),
                   ],
                 ),
               ),
@@ -176,21 +237,57 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                   color: cardColor,
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: TextFormField(
-                  controller: _descController,
-                  validator: Validators.required,
-                  decoration: InputDecoration(
-                    labelText: 'Description',
-                    hintText: 'e.g. Coffee at Starbucks',
-                    border: InputBorder.none,
-                    enabledBorder: InputBorder.none,
-                    focusedBorder: InputBorder.none,
-                    filled: false,
-                    prefixIcon: Icon(
-                      Icons.description_outlined,
-                      color: Colors.grey.shade400,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    TextFormField(
+                      controller: _descController,
+                      validator: Validators.required,
+                      decoration: InputDecoration(
+                        labelText: 'Description',
+                        hintText: 'e.g. Dinner with family',
+                        border: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
+                        filled: false,
+                        prefixIcon: Icon(
+                          Icons.edit_note_rounded,
+                          color: Colors.grey.shade400,
+                        ),
+                      ),
                     ),
-                  ),
+                    const SizedBox(height: 10),
+                    // Quick description tags
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: _quickDescriptions.map((tag) {
+                        return GestureDetector(
+                          onTap: () =>
+                              setState(() => _descController.text = tag),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 5,
+                            ),
+                            decoration: BoxDecoration(
+                              color: isDark
+                                  ? Colors.white10
+                                  : Colors.grey.shade100,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              tag,
+                              style: GoogleFonts.inter(
+                                fontSize: 11,
+                                color: Colors.grey.shade600,
+                              ),
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 16),
@@ -264,7 +361,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                         color: Colors.grey.shade500,
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 14),
                     Wrap(
                       spacing: 8,
                       runSpacing: 8,
@@ -331,7 +428,10 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                         onPressed: _save,
                         child: Text(
                           'Save Expense',
-                          style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+                          style: GoogleFonts.inter(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
               ),
